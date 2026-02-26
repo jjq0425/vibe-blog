@@ -40,8 +40,8 @@ services:
   # Vue 前端 - vibe-blog
   frontend:
     build:
-      context: ../frontend
-      dockerfile: ../docker/Dockerfile.frontend
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
     container_name: vibe-blog-frontend
     ports:
       - "3000:80"
