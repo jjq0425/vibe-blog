@@ -9,8 +9,29 @@ import time
 from typing import Optional, List, Dict, Any
 
 import httpx
+import re
 
 logger = logging.getLogger(__name__)
+
+# 匹配 Gemini 思考标签及其内容：<think>...</think>
+_THINK_TAG_RE = re.compile(r'<think>[\s\S]*?</think>\s*', re.IGNORECASE)
+# 匹配未闭合的 <think> 标签（流式截断场景）
+_THINK_UNCLOSED_RE = re.compile(r'<think>[\s\S]*', re.IGNORECASE)
+
+
+def _strip_thinking(text: str) -> str:
+    """清理模型输出中的思考文本（Gemini <think> 标签）。
+
+    Gemini 等模型可能在正文前输出 <think>...</think> 推理过程，
+    导致下游 JSON 解析或 markdown 渲染失败。在 LLM 层统一清理。
+    """
+    if not text or '<think>' not in text.lower():
+        return text
+    # 先清理闭合的 <think>...</think>
+    cleaned = _THINK_TAG_RE.sub('', text)
+    # 再清理未闭合的 <think>（流式截断）
+    cleaned = _THINK_UNCLOSED_RE.sub('', cleaned)
+    return cleaned.strip()
 
 
 def _resolve_caller(caller: str) -> str:
@@ -482,7 +503,7 @@ class LLMService:
                     model=model_name,
                 )
 
-            return content
+            return _strip_thinking(content)
 
         except ContextLengthExceeded as e:
             logger.error(f"上下文超限: {e}")
@@ -578,7 +599,7 @@ class LLMService:
                             model=model_name,
                         )
 
-                    return full_content.strip()
+                    return _strip_thinking(full_content.strip())
 
                 except LLMCallTimeout:
                     if attempt < DEFAULT_MAX_RETRIES - 1:

@@ -268,6 +268,10 @@ class SharedState(TypedDict):
     _budget_warning: bool  # Feature H: 预算警告标志
     prefetch_docs: List[dict]  # Feature G: 预取的知识库文档
 
+    # 配图异步任务（coder_and_artist → wait_for_images 传递）
+    _image_future: Optional[object]  # concurrent.futures.Future
+    _image_executor: Optional[object]  # ThreadPoolExecutor
+
 
 def get_max_search_count(target_length: str) -> int:
     """
@@ -394,6 +398,9 @@ def create_initial_state(
         _node_budget=None,
         _budget_warning=False,
         prefetch_docs=[],
+        # 配图异步任务
+        _image_future=None,
+        _image_executor=None,
         # 新增：文章长度配置
         custom_config=custom_config,
         target_sections_count=target_sections_count,

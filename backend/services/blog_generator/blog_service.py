@@ -65,9 +65,9 @@ class BlogService:
             pass
         return None
 
-    def enhance_topic(self, topic: str, timeout: float = 3.0) -> str:
+    def enhance_topic(self, topic: str, timeout: float = 30.0) -> str:
         """
-        使用 LLM 优化用户输入的主题
+        使用 LLM 优化用户输入的主题（轻量直调，不走 resilient_chat 重试链）
 
         Args:
             topic: 用户原始输入
@@ -76,36 +76,60 @@ class BlogService:
         Returns:
             优化后的主题字符串
         """
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "你是一个技术博客主题优化助手。用户会给你一个简短的技术主题，"
-                    "请将其优化为一个更具体、更有吸引力的博客标题。\n"
-                    "要求：\n"
-                    "1. 保留用户的核心意图\n"
-                    "2. 补充具体的技术细节或应用场景\n"
-                    "3. 使标题更适合作为一篇深度技术博客的标题\n"
-                    "4. 只返回优化后的标题文本，不要加引号或其他格式"
-                ),
-            },
-            {
-                "role": "user",
-                "content": topic,
-            },
+        from langchain_core.messages import SystemMessage, HumanMessage
+        from services.llm_service import _strip_thinking
+
+        system_content = (
+            "你是一个技术博客主题优化助手。用户会给你一个简短的技术关键词或主题，"
+            "你需要将其扩展为一个具体、有吸引力的中文博客标题。\n\n"
+            "规则：\n"
+            "1. 保留用户的核心技术方向\n"
+            "2. 补充具体的技术细节、应用场景或实战角度\n"
+            "3. 标题长度 15-40 个字，适合深度技术博客\n"
+            "4. 直接输出优化后的标题，不要加引号、不要解释、不要思考过程\n\n"
+            "示例：\n"
+            "输入: Redis\n"
+            "输出: Redis 高并发场景下的缓存穿透与击穿解决方案\n\n"
+            "输入: Vue3\n"
+            "输出: Vue3 Composition API 实战：构建高性能中后台管理系统\n\n"
+            "输入: LangChain\n"
+            "输出: LangChain 实战指南：从零构建企业级 RAG 知识问答系统\n\n"
+            "输入: Docker\n"
+            "输出: Docker 容器化部署最佳实践：从开发到生产环境的完整方案"
+        )
+        langchain_messages = [
+            SystemMessage(content=system_content),
+            HumanMessage(content=f"请优化以下主题：{topic}"),
         ]
         try:
             import concurrent.futures
+            # 直接拿 LangChain model 实例，绕过 resilient_chat / 限流 / 心跳
+            llm = self.generator.llm
+            # LLMClientAdapter 包了一层，取底层 LLMService
+            llm_service = getattr(llm, 'llm_service', llm)
+            model = llm_service.get_text_model()
+            if not model:
+                logger.warning("[enhance_topic] 模型不可用，返回原始主题")
+                return topic
+
+            def _invoke():
+                return model.invoke(langchain_messages)
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(self.generator.llm.chat, messages, None, "enhance_topic")
-                result = future.result(timeout=timeout)
-            if result and result.strip():
-                enhanced = result.strip().strip('"\'《》「」')
-                return enhanced
+                future = executor.submit(_invoke)
+                response = future.result(timeout=timeout)
+
+            raw = response.content if response else ""
+            logger.info(f"[enhance_topic] 原始主题: '{topic}', LLM 原始返回: '{raw[:200]}'")
+            # 清理 <think> 标签
+            cleaned = _strip_thinking(raw).strip().strip('"\'《》「」') if raw else ""
+            if cleaned and cleaned.lower() != topic.lower():
+                return cleaned
+            logger.warning(f"[enhance_topic] 清理后结果与原始主题相同，返回原始主题")
         except concurrent.futures.TimeoutError:
-            logger.warning(f"主题优化超时({timeout}s)，返回原始主题")
+            logger.warning(f"[enhance_topic] 超时({timeout}s)，返回原始主题")
         except Exception as e:
-            logger.warning(f"主题优化失败，返回原始主题: {e}")
+            logger.warning(f"[enhance_topic] 失败: {e}，返回原始主题")
         return topic
 
     def _get_flask_app(self):

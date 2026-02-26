@@ -137,7 +137,7 @@ class Config:
     LLM_STRATEGIC = os.getenv('LLM_STRATEGIC', '')
     LLM_FAST_MAX_TOKENS = int(os.getenv('LLM_FAST_MAX_TOKENS', '3000'))
     LLM_SMART_MAX_TOKENS = int(os.getenv('LLM_SMART_MAX_TOKENS', '8192'))
-    LLM_STRATEGIC_MAX_TOKENS = int(os.getenv('LLM_STRATEGIC_MAX_TOKENS', '4000'))
+    LLM_STRATEGIC_MAX_TOKENS = int(os.getenv('LLM_STRATEGIC_MAX_TOKENS', '16000'))
 
     # Jina 深度抓取（75.03）
     JINA_API_KEY = os.getenv('JINA_API_KEY', '')

@@ -120,7 +120,7 @@ class PlannerAgent:
                     response_format={"type": "json_object"}
                 )
             
-            # 解析 JSON（可能包含 markdown 代码块）
+            # 解析 JSON（可能包含 markdown 代码块或思考文本）
             if not response:
                 raise ValueError("LLM 返回空响应")
             response_text = response.strip()
@@ -139,6 +139,13 @@ class PlannerAgent:
                     response_text = response_text[start:end].strip()
                 else:
                     response_text = response_text[start:].strip()
+
+            # 如果响应包含思考文本（非 JSON），提取第一个 JSON 对象
+            if response_text and not response_text.startswith('{'):
+                json_start = response_text.find('{')
+                if json_start > 0:
+                    logger.info(f"[Planner] 跳过 {json_start} 字符的思考文本，提取 JSON")
+                    response_text = response_text[json_start:]
 
             # 尝试修复截断的 JSON（流式模式常见问题）
             try:
@@ -188,8 +195,11 @@ class PlannerAgent:
     
     @staticmethod
     def _repair_truncated_json(text: str) -> str:
-        """尝试修复截断的 JSON（补全缺失的括号和引号）"""
-        # 统计未闭合的括号
+        """尝试修复截断的 JSON（补全缺失的括号和引号）
+
+        策略：逐步从末尾回退，每次删除最后一个不完整的元素，
+        然后补全所有未闭合的括号。最多尝试 20 次。
+        """
         open_braces = text.count('{') - text.count('}')
         open_brackets = text.count('[') - text.count(']')
 
@@ -198,15 +208,10 @@ class PlannerAgent:
 
         repaired = text.rstrip()
 
-        # 策略：从末尾向前回退到最后一个完整的 JSON 值边界
-        # 完整值边界的标志：}, ], "string", number, true, false, null
-        # 然后从那里补全括号
-
-        # 先尝试直接补全（简单情况）
-        for attempt in range(3):
+        for attempt in range(20):
             candidate = repaired.rstrip().rstrip(',')
 
-            # 检查是否在字符串中间
+            # 检查是否在字符串中间（未闭合的引号）
             in_string = False
             escaped = False
             for ch in candidate:
@@ -241,8 +246,7 @@ class PlannerAgent:
             except json.JSONDecodeError:
                 pass
 
-            # 回退策略：删除最后一个不完整的 key-value 对
-            # 找到最后一个逗号或开括号，截断到那里
+            # 回退策略：删除最后一个不完整的元素
             last_comma = repaired.rfind(',')
             last_open_brace = repaired.rfind('{')
             last_open_bracket = repaired.rfind('[')

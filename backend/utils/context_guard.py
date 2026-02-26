@@ -34,6 +34,9 @@ MODEL_CONTEXT_LIMITS = {
     # DeepSeek
     "deepseek-chat": 64_000,
     "deepseek-reasoner": 64_000,
+    # Gemini
+    "gemini-3-pro": 1_000_000,
+    "gemini-3.1-pro": 1_000_000,
 }
 
 # 安全系数

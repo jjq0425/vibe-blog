@@ -233,11 +233,16 @@ class WriterAgent:
                 section_title = section_outline.get('title', '')
                 accumulated = ""
                 import time as _time
+                from services.llm_service import _strip_thinking
                 _last_send = [0.0]  # 节流：最少间隔 100ms
 
                 def on_writing_chunk(delta, acc):
                     nonlocal accumulated
                     accumulated = acc
+                    # 清理 Gemini <think> 标签，只发送正文内容
+                    cleaned = _strip_thinking(acc)
+                    if not cleaned:
+                        return  # 思考文本还没结束，不发送
                     now = _time.time()
                     if now - _last_send[0] < 0.1:
                         return  # 节流，跳过
@@ -245,7 +250,7 @@ class WriterAgent:
                     self.task_manager.send_event(self.task_id, 'writing_chunk', {
                         'section_title': section_title,
                         'delta': delta,
-                        'accumulated': acc,
+                        'accumulated': cleaned,
                     })
 
                 response = self.llm.chat_stream(

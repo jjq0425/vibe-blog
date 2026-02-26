@@ -321,7 +321,14 @@ class ResearcherAgent:
 
             if result.get('success'):
                 sources_used = result.get('sources_used', [])
-                logger.info(f"🧠 智能搜索完成，使用搜索源: {sources_used}")
+                logger.info(f"智能搜索完成，使用搜索源: {sources_used}")
+                # 将搜索路由结果发送到前端
+                if self.task_manager and self.task_id:
+                    source_names = ', '.join(sources_used) if sources_used else '无'
+                    self.task_manager.send_event(self.task_id, 'log', {
+                        'logger': 'search_router',
+                        'message': f'搜索路由决策: [{source_names}]，共 {len(result.get("results", []))} 条结果',
+                    })
                 search_results = result.get('results', [])[:max_results]
 
                 # 保存到缓存
