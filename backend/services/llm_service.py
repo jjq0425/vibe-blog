@@ -385,6 +385,21 @@ class LLMService:
                     'thinking': thinking,
                 })
 
+            # LLM 调用期间每 5 秒发一次心跳，让前端知道还在工作
+            _llm_done = threading.Event()
+            def _llm_heartbeat():
+                tick = 0
+                while not _llm_done.wait(5):
+                    tick += 1
+                    if self.task_manager and self.task_id:
+                        self.task_manager.send_event(self.task_id, 'log', {
+                            'logger': caller or 'llm',
+                            'message': f'🧠 模型思考中... ({tick * 5}s)',
+                        })
+            hb_thread = threading.Thread(target=_llm_heartbeat, daemon=True)
+            if _send_llm:
+                hb_thread.start()
+
             # Thinking 模式分支
             if thinking and self._supports_thinking(model_name):
                 content = self._chat_with_thinking(
@@ -401,6 +416,9 @@ class LLMService:
                     messages=langchain_messages,
                     caller=caller,
                 )
+
+            # 停止 LLM 心跳线程
+            _llm_done.set()
 
             # SSE: 发送 llm_end 事件
             if _send_llm:

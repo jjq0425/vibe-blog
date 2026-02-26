@@ -117,7 +117,7 @@ def stream_task_progress(task_id: str):
                     if event_type == 'error' and not data.get('recoverable'):
                         break
 
-                if time.time() - last_heartbeat > 30:
+                if time.time() - last_heartbeat > 10:
                     yield f"event: heartbeat\ndata: {json.dumps({'timestamp': time.time()})}\n\n"
                     last_heartbeat = time.time()
 
