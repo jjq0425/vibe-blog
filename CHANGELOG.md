@@ -24,8 +24,7 @@ All notable changes to the Vibe Blog project will be documented in this file.
 - ✅ test_66_reviewer_eval 7/8 PASS（R2 逻辑连贯性 FAIL 为预期）
 
 ### Contributors
-- @qjymary (原 PR)
-- @lailoo (优化改进)
+- @qjymary
 
 ---
 
