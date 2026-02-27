@@ -250,6 +250,10 @@ class AssemblerAgent:
         images = state.get('images', [])
         document_references = state.get('document_references', [])
         search_results = state.get('search_results', [])
+        # 优先使用 researcher 的真实引用链接，而非 planner LLM 编造的
+        real_reference_links = state.get('reference_links', [])
+        if real_reference_links:
+            outline['reference_links'] = real_reference_links
 
         logger.info("开始组装文档")
 
