@@ -34,10 +34,15 @@ def create_app(config_class=None):
     
     # 初始化各种服务
     init_services(app)
-    
+
     # 注册 Blueprints
     register_blueprints(app)
-    
+
+    # 健康检查
+    @app.route('/health')
+    def health_check():
+        return {'status': 'ok', 'service': 'banana-blog'}
+
     logger.info("Vibe Blog 后端应用已启动")
     return app
 
@@ -53,7 +58,7 @@ def init_services(app):
     from services.video_service import init_video_service, get_video_service
     from services.database_service import init_db_service
     from services.file_parser_service import init_file_parser
-    from services.knowledge_service import init_knowledge_service, get_knowledge_service
+    from services.knowledge_service import init_knowledge_service
     from routes.blog_routes import init_blog_services
 
     # 1. LLM
@@ -112,32 +117,70 @@ def init_services(app):
     else:
         logger.warning("MINERU_TOKEN 未配置，PDF 解析功能不可用")
 
-    # 8. Reviewer (Optional)
+    # 8. TaskQueue + CronScheduler (Optional)
+    try:
+        import asyncio
+        from services.task_queue import TaskQueueManager
+        from services.task_queue.cron_scheduler import CronScheduler
+        from routes.queue_routes import init_queue_routes
+        from routes.scheduler_routes import init_scheduler_routes
+
+        backend_dir = os.path.dirname(os.path.dirname(__file__))
+        db_path = os.path.join(backend_dir, 'data', 'task_queue.db')
+        queue_manager = TaskQueueManager(db_path=db_path, max_concurrent=2)
+        asyncio.run(queue_manager.init())
+
+        init_queue_routes(queue_manager)
+        app.queue_manager = queue_manager
+
+        cron_scheduler = CronScheduler(queue_manager, db_path=db_path)
+        asyncio.run(cron_scheduler.start())
+        init_scheduler_routes(cron_scheduler)
+
+        logger.info("任务排队系统已初始化 (TaskQueueManager + CronScheduler)")
+    except Exception as e:
+        logger.warning(f"任务排队系统初始化失败 (可选模块): {e}")
+
+    # 9. Chat / Writing Session (Optional)
+    try:
+        from services.chat.writing_session import WritingSessionManager
+        from services.chat.agent_dispatcher import AgentDispatcher
+        from routes.chat_routes import init_chat_service
+
+        backend_dir = os.path.dirname(os.path.dirname(__file__))
+        chat_db_path = os.path.join(backend_dir, 'data', 'writing_sessions.db')
+        os.makedirs(os.path.dirname(chat_db_path), exist_ok=True)
+        chat_session_mgr = WritingSessionManager(db_path=chat_db_path)
+        chat_dispatcher = AgentDispatcher(
+            llm_client=get_llm_service(),
+            search_service=get_search_service(),
+        )
+        init_chat_service(chat_session_mgr, chat_dispatcher)
+        logger.info("对话式写作服务已初始化")
+    except Exception as e:
+        logger.warning(f"对话式写作服务初始化失败 (可选模块): {e}")
+
+    # 10. Reviewer (Optional)
     if os.environ.get('REVIEWER_ENABLED', 'false').lower() == 'true':
         try:
             from vibe_reviewer import init_reviewer_service
-            
+
             reviewer_search_service = None
             try:
                 reviewer_search_service = get_search_service()
-            except:
+            except Exception:
                 pass
-                
+
             init_reviewer_service(
                 llm_service=get_llm_service(),
                 search_service=reviewer_search_service,
             )
-            # Reviewer routes are registered in register_blueprints via special handling or just here?
-            # Reviewer module usually has its own register function.
-            # In original app.py: register_reviewer_routes(app)
-            # We will handle this in register_blueprints
             logger.info("vibe-reviewer 模块已初始化")
         except Exception as e:
             logger.warning(f"vibe-reviewer 模块初始化失败: {e}")
 
 def register_blueprints(app):
     """注册路由蓝图"""
-    # 兼容旧路由路径；create_app 仍保留 app factory 结构，但默认注册 legacy blueprints。
     from routes import register_all_blueprints
 
     register_all_blueprints(app)
