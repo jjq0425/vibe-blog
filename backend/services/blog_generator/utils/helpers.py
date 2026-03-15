@@ -86,9 +86,17 @@ def generate_anchor_id(title: str) -> str:
     Returns:
         锚点 ID
     """
+    title = (title or '').strip()
+
     # 移除特殊字符，转换为小写，空格替换为连字符
     anchor = re.sub(r'[^\w\s-]', '', title.lower())
-    anchor = re.sub(r'\s+', '-', anchor.strip())
+    anchor = re.sub(r'[-\s]+', '-', anchor).strip('-')
+
+    # 纯符号/纯中文等场景下，兜底生成稳定锚点，避免返回空串
+    if not anchor:
+        digest = hashlib.md5(title.encode('utf-8')).hexdigest()[:8] if title else 'section'
+        anchor = f"section-{digest}"
+
     return anchor
 
 

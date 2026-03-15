@@ -125,6 +125,23 @@ class TestHelpers:
         assert len(unique) == 2
         assert unique[0]['title'] == 'A'
         assert unique[1]['title'] == 'B'
+
+    def test_generate_anchor_id_falls_back_for_symbol_only_title(self):
+        """测试标题清洗后为空时仍生成稳定锚点"""
+        from services.blog_generator.utils.helpers import generate_anchor_id
+
+        anchor = generate_anchor_id("？？？！！！")
+
+        assert anchor.startswith('section-')
+        assert len(anchor) > len('section-')
+
+    def test_generate_anchor_id_collapses_duplicate_separators(self):
+        """测试连续空格和连字符会被收敛"""
+        from services.blog_generator.utils.helpers import generate_anchor_id
+
+        anchor = generate_anchor_id(" Hello   --  World ")
+
+        assert anchor == 'hello-world'
     
     def test_estimate_reading_time(self):
         """测试阅读时间估算"""
