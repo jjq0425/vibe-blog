@@ -82,6 +82,22 @@ export async function polishSelectedText(selectedText: string, instruction: stri
   return response.json()
 }
 
+export async function updateBlogContent(
+  blogId: string,
+  markdown: string,
+  savedPath?: string
+): Promise<{ success: boolean; file_updated?: boolean; error?: string }> {
+  const response = await fetch(`${API_BASE}/api/blog/${blogId}/content`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      markdown,
+      saved_path: savedPath,
+    })
+  })
+  return response.json()
+}
+
 // 恢复中断的任务（101.113 LangGraph interrupt 方案）
 export async function resumeTask(taskId: string, action: 'accept' | 'edit' = 'accept', outline?: any): Promise<{ success: boolean; error?: string }> {
   const response = await fetch(`${API_BASE}/api/tasks/${taskId}/resume`, {

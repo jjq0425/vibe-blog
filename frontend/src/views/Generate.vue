@@ -136,9 +136,6 @@
                   <Button variant="ghost" size="icon" class="h-8 w-8" title="行内代码" @click="applyMarkdownFormat('code')">
                     <Code2 :size="15" />
                   </Button>
-                  <Button variant="ghost" size="icon" class="h-8 w-8" title="标题" @click="applyMarkdownFormat('heading')">
-                    <Heading2 :size="15" />
-                  </Button>
                   <Button variant="ghost" size="icon" class="h-8 w-8" title="引用" @click="applyMarkdownFormat('quote')">
                     <Quote :size="15" />
                   </Button>
@@ -273,7 +270,6 @@ import {
   Bold,
   Italic,
   Code2,
-  Heading2,
   Quote,
   List,
   Sparkles,
@@ -308,6 +304,7 @@ const {
   statusBadge,
   currentTaskId,
   previewContent,
+  savedOutputPath,
   outlineData,
   waitingForOutline,
   citations,
@@ -522,6 +519,26 @@ const applyWrappedFormat = async (prefix: string, suffix: string = prefix) => {
   await updateSelectionAfterEdit(start + prefix.length, end + prefix.length)
 }
 
+const persistEditedContent = async (successMessage: string) => {
+  if (!completedBlogId.value || !savedOutputPath.value) return
+
+  try {
+    const result = await api.updateBlogContent(
+      completedBlogId.value,
+      editableContent.value,
+      savedOutputPath.value
+    )
+
+    if (!result.success) {
+      throw new Error(result.error || '保存失败')
+    }
+
+    addProgressItem(successMessage, 'success')
+  } catch (error: any) {
+    addProgressItem(`保存编辑结果失败: ${error.message}`, 'error')
+  }
+}
+
 const applyLinePrefixFormat = async (prefix: string) => {
   const { start, end } = selectionRange.value
   if (end <= start) return
@@ -538,30 +555,31 @@ const applyLinePrefixFormat = async (prefix: string) => {
   await updateSelectionAfterEdit(lineStart, lineStart + formattedBlock.length)
 }
 
-const applyMarkdownFormat = async (type: 'bold' | 'italic' | 'code' | 'heading' | 'quote' | 'list') => {
+const applyMarkdownFormat = async (type: 'bold' | 'italic' | 'code' | 'quote' | 'list') => {
   if (!canPolish.value) return
 
   if (type === 'bold') {
     await applyWrappedFormat('**')
+    await persistEditedContent('选中文本已加粗并保存')
     return
   }
   if (type === 'italic') {
     await applyWrappedFormat('*')
+    await persistEditedContent('选中文本已斜体并保存')
     return
   }
   if (type === 'code') {
     await applyWrappedFormat('`')
-    return
-  }
-  if (type === 'heading') {
-    await applyLinePrefixFormat('## ')
+    await persistEditedContent('选中文本已转为行内代码并保存')
     return
   }
   if (type === 'quote') {
     await applyLinePrefixFormat('> ')
+    await persistEditedContent('选中文本已转为引用并保存')
     return
   }
   await applyLinePrefixFormat('- ')
+  await persistEditedContent('选中文本已转为无序列表并保存')
 }
 
 const openPolishDialog = () => {
@@ -619,7 +637,7 @@ const applyPolishedText = async () => {
     textarea.focus()
     textarea.setSelectionRange(cursor, cursor)
   }
-  addProgressItem('选中文本已润色并替换', 'success')
+  await persistEditedContent('选中文本已润色替换并保存')
 }
 
 // 复制到剪贴板
