@@ -119,8 +119,12 @@
               <div class="scroll-shadow scroll-shadow-bottom"></div>
               <textarea
                 v-if="isEditing"
+                ref="editTextareaRef"
                 v-model="editableContent"
                 class="edit-textarea"
+                @mouseup="handleTextSelection"
+                @keyup="handleTextSelection"
+                @scroll="closePolishDialog"
               ></textarea>
               <div v-else-if="previewContent" id="preview-content" ref="previewRef" class="preview-panel" v-html="renderedHtml"></div>
               <div v-else class="preview-empty">
@@ -170,6 +174,31 @@
       :loading="evaluateLoading"
       @close="showQualityDialog = false"
     />
+
+    <Dialog :open="showPolishDialog" @update:open="(v: boolean) => { if (!v) closePolishDialog() }">
+      <DialogContent class="max-w-lg font-mono">
+        <DialogHeader>
+          <DialogTitle>润色</DialogTitle>
+          <DialogDescription>选中的文本会按你的目标由 AI 改写，并直接替换原文。</DialogDescription>
+        </DialogHeader>
+
+        <div class="polish-dialog-body">
+          <div class="polish-selected-text">{{ selectedTextPreview }}</div>
+          <Input
+            v-model="polishInstruction"
+            placeholder="输入润色目标，例如：更专业、更简洁、更口语化"
+            @keydown.enter="handlePolish"
+          />
+          <div class="polish-dialog-actions">
+            <Button variant="outline" @click="closePolishDialog">取消</Button>
+            <Button :disabled="polishLoading || !canPolish" @click="handlePolish">
+              <Loader2 v-if="polishLoading" class="animate-spin" />
+              <span>{{ polishLoading ? '润色中...' : '开始润色' }}</span>
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -183,8 +212,10 @@ import { useTypingAnimation } from '@/composables/useTypingAnimation'
 import { useResizableSplit } from '@/composables/useResizableSplit'
 import { scanCitationLinks } from '@/utils/citationMatcher'
 import type { Citation } from '@/utils/citationMatcher'
-import { Square, Pencil, Undo2, Copy, Check, GraduationCap, Settings as SettingsIcon, X as XIcon } from 'lucide-vue-next'
+import { Square, Pencil, Undo2, Copy, Check, GraduationCap, Settings as SettingsIcon, X as XIcon, Loader2 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import * as api from '@/services/api'
 import ProgressDrawer from '@/components/home/ProgressDrawer.vue'
@@ -228,6 +259,7 @@ const exportComposable = useExport()
 const copied = ref(false)
 const isEditing = ref(false)
 const editableContent = ref('')
+const editTextareaRef = ref<HTMLTextAreaElement | null>(null)
 const { renderMarkdown } = useMarkdownRenderer()
 
 // 打字动画：流式文本逐字显示
@@ -282,17 +314,86 @@ const tooltipVisible = ref(false)
 const tooltipCitation = ref<Citation | null>(null)
 const tooltipIndex = ref(0)
 const tooltipPosition = ref({ top: 0, left: 0 })
+const showPolishDialog = ref(false)
+const polishInstruction = ref('')
+const polishLoading = ref(false)
+const selectedText = ref('')
+const selectionRange = ref({ start: 0, end: 0 })
+const selectedTextPreview = computed(() => selectedText.value.trim())
+const canPolish = computed(() => selectedTextPreview.value.length > 0)
 
 // 编辑模式切换（对齐 DeerFlow research-block.tsx:633）
 const toggleEdit = () => {
   if (isEditing.value) {
     // 撤销：恢复原始内容
+    closePolishDialog()
     editableContent.value = ''
     isEditing.value = false
   } else {
     // 进入编辑：复制当前预览内容到 textarea
     editableContent.value = previewContent.value
     isEditing.value = true
+  }
+}
+
+const closePolishDialog = () => {
+  showPolishDialog.value = false
+  polishLoading.value = false
+  polishInstruction.value = ''
+  selectedText.value = ''
+  selectionRange.value = { start: 0, end: 0 }
+}
+
+const handleTextSelection = () => {
+  const textarea = editTextareaRef.value
+  if (!textarea) return
+
+  const start = textarea.selectionStart ?? 0
+  const end = textarea.selectionEnd ?? 0
+  if (end <= start) {
+    closePolishDialog()
+    return
+  }
+
+  const rawSelectedText = editableContent.value.slice(start, end)
+  if (!rawSelectedText.trim()) {
+    closePolishDialog()
+    return
+  }
+
+  selectionRange.value = { start, end }
+  selectedText.value = rawSelectedText
+  showPolishDialog.value = true
+}
+
+const handlePolish = async () => {
+  if (!canPolish.value || polishLoading.value) return
+
+  polishLoading.value = true
+  try {
+    const result = await api.polishSelectedText(selectedTextPreview.value, polishInstruction.value.trim())
+    if (!result.success || !result.polished_text) {
+      throw new Error(result.error || '润色失败')
+    }
+
+    const { start, end } = selectionRange.value
+    const polishedText = result.polished_text
+    editableContent.value = `${editableContent.value.slice(0, start)}${polishedText}${editableContent.value.slice(end)}`
+    previewContent.value = editableContent.value
+
+    closePolishDialog()
+
+    await nextTick()
+    const textarea = editTextareaRef.value
+    if (textarea) {
+      const cursor = start + polishedText.length
+      textarea.focus()
+      textarea.setSelectionRange(cursor, cursor)
+    }
+    addProgressItem('选中文本已润色并替换', 'success')
+  } catch (error: any) {
+    addProgressItem(`润色失败: ${error.message}`, 'error')
+    polishLoading.value = false
   }
 }
 
@@ -418,6 +519,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
+  closePolishDialog()
   tooltipVisible.value = false
   if (hoverShowTimer) clearTimeout(hoverShowTimer)
   if (hoverHideTimer) clearTimeout(hoverHideTimer)
@@ -706,6 +808,31 @@ onUnmounted(() => {
 .edit-textarea:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px var(--color-primary-light);
+}
+
+.polish-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.polish-selected-text {
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-base);
+  color: var(--color-text-muted);
+  line-height: 1.7;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.polish-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* === 空状态 === */

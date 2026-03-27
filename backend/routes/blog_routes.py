@@ -478,6 +478,33 @@ def enhance_topic():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@blog_bp.route('/api/blog/polish-selection', methods=['POST'])
+def polish_selection():
+    """对选中的局部文本进行润色"""
+    try:
+        data = request.get_json() or {}
+        selected_text = (data.get('selected_text') or '').strip()
+        instruction = (data.get('instruction') or '').strip()
+
+        if not selected_text:
+            return jsonify({'success': False, 'error': '请提供 selected_text 参数'}), 400
+
+        blog_service = get_blog_service()
+        if not blog_service:
+            return jsonify({'success': False, 'error': '博客生成服务不可用'}), 500
+
+        polished_text = blog_service.polish_selection(selected_text, instruction=instruction)
+
+        return jsonify({
+            'success': True,
+            'polished_text': polished_text or selected_text,
+        })
+
+    except Exception as e:
+        logger.error(f"文本润色失败: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @blog_bp.route('/api/tasks/<task_id>/resume', methods=['POST'])
 def resume_task(task_id):
     """恢复中断的任务（101.113 LangGraph interrupt 方案）"""
