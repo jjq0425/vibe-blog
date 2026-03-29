@@ -520,20 +520,30 @@ const applyWrappedFormat = async (prefix: string, suffix: string = prefix) => {
 }
 
 const persistEditedContent = async (successMessage: string) => {
-  if (!completedBlogId.value || !savedOutputPath.value) return
+  if (!completedBlogId.value) {
+    addProgressItem('无法保存编辑结果：缺少已完成的文章 ID', 'error')
+    return
+  }
 
   try {
     const result = await api.updateBlogContent(
       completedBlogId.value,
       editableContent.value,
-      savedOutputPath.value
+      savedOutputPath.value || undefined
     )
 
     if (!result.success) {
       throw new Error(result.error || '保存失败')
     }
 
-    addProgressItem(successMessage, 'success')
+    if (!savedOutputPath.value) {
+      addProgressItem(
+        `${successMessage}（已更新数据库，但由于缺少文件路径，未能将内容持久化到文件）`,
+        'warning'
+      )
+    } else {
+      addProgressItem(successMessage, 'success')
+    }
   } catch (error: any) {
     addProgressItem(`保存编辑结果失败: ${error.message}`, 'error')
   }
