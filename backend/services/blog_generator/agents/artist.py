@@ -599,10 +599,10 @@ class ArtistAgent:
             response = self.llm.chat(messages=[{"role": "user", "content": prompt}])
             keywords = response.strip().strip('"\'')
             if keywords:
-                logger.info(f" 搜索关键词提取: '{text}' → '{keywords}'")
+                logger.info(f" 配图搜索关键词提取: '{keywords}'")
                 return keywords
         except Exception as e:
-            logger.warning(f"搜索关键词提取失败，使用原始文本: {e}")
+            logger.warning(f"配图搜索关键词提取失败，使用原始文本: {e}")
         return text[:30]
 
     def _search_image(
