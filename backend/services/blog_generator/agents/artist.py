@@ -580,18 +580,18 @@ class ArtistAgent:
             text: 原始文本（如章节标题）
             
         Returns:
-            提取后的搜索关键词，失败返回原始文本的前 8 字
+            提取后的搜索关键词，失败返回原始文本的前 30 字
         """
         if not text or len(text) <= 15:
             return text
         try:
-            prompt = f"""你是一个搜索关键词提取专家。请从以下文本中提取最核心的1个关键词作为图片搜索关键词。
+            prompt = f"""你是一个搜索关键词提取专家。请从以下文本中提取最核心的3-8个关键词作为图片搜索关键词。
             要求：
             - 提取最核心的技术名词、产品名、概念名
             - 去掉序号、修饰词、评价性描述
             - 只返回关键词本身，不要解释，不要标点，不要引号
-            - 只能返回一个搜索关键词
-            - 单个关键词控制在 6 字以内
+            - 搜索关键词之间用空格分割
+            - 单个关键词控制在 5 字以内
 
             原始文本：{text}
 
@@ -603,7 +603,7 @@ class ArtistAgent:
                 return keywords
         except Exception as e:
             logger.warning(f"搜索关键词提取失败，使用原始文本: {e}")
-        return text[:8]
+        return text[:30]
 
     def _search_image(
         self,

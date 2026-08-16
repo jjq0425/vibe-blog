@@ -185,7 +185,7 @@ class DoubaoImageSearchService:
     def is_available(self) -> bool:
         return bool(self.api_key)
 
-    def search_images(self, query: str, max_results: int = 1) -> Dict[str, Any]:
+    def search_images(self, query: str, max_results: int = 5) -> Dict[str, Any]:
         """
         豆包搜图 — SearchType=image，返回图片 URL 列表
 
@@ -261,20 +261,22 @@ class DoubaoImageSearchService:
         documents = result.get("Documents", [])
         for doc in documents:
             title = doc.get("Title", "")
-            url = doc.get("Url", "")
+            source_url = doc.get("Url", "")
             host_info = doc.get("HostInfo", {})
             source = host_info.get("Hostname", "")
 
-            doc_images = doc.get("Images", [])
-            for img in doc_images:
-                img_url = img.get("Url", "") if isinstance(img, dict) else img
-                if img_url:
-                    images.append({
-                        "url": img_url,
-                        "title": title,
-                        "source_url": url,
-                        "source": source,
-                    })
+            # 图片 URL 嵌在 Snippet[] 中 Type=image 的条目里
+            for snippet in doc.get("Snippet", []):
+                if snippet.get("Type") == "image":
+                    img_data = snippet.get("Image", {})
+                    img_url = img_data.get("ImageUrl", "") if isinstance(img_data, dict) else ""
+                    if img_url:
+                        images.append({
+                            "url": img_url,
+                            "title": title,
+                            "source_url": source_url,
+                            "source": source,
+                        })
 
         return images
 
