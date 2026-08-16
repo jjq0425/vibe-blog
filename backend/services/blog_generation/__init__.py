@@ -26,6 +26,10 @@ _EXPORTS = {
         "services.blog_generator.services.doubao_search_service",
         "DoubaoSearchService",
     ),
+    "DoubaoImageSearchService": (
+        "services.blog_generator.services.doubao_search_service",
+        "DoubaoImageSearchService",
+    ),
     "extract_article_summary": (
         "services.blog_generator.blog_service",
         "extract_article_summary",
@@ -73,6 +77,14 @@ _EXPORTS = {
     "get_doubao_search_service": (
         "services.blog_generator.services.doubao_search_service",
         "get_doubao_search_service",
+    ),
+    "init_doubao_image_search_service": (
+        "services.blog_generator.services.doubao_search_service",
+        "init_doubao_image_search_service",
+    ),
+    "get_doubao_image_search_service": (
+        "services.blog_generator.services.doubao_search_service",
+        "get_doubao_image_search_service",
     ),
     "init_serper_service": (
         "services.blog_generator.services.serper_search_service",

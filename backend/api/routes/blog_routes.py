@@ -82,6 +82,15 @@ def init_blog_services(app_config):
         except Exception as e:
             logger.warning(f"搜狗服务初始化跳过: {e}")
 
+        # 豆包搜图（独立实例，用 DOUBAO_IMAGE_SEARCH_API_KEY）
+        try:
+            from services.blog_generation import init_doubao_image_search_service
+            img_svc = init_doubao_image_search_service(app_config)
+            if img_svc and img_svc.is_available():
+                logger.info("豆包搜图服务已初始化（独立实例）")
+        except Exception as e:
+            logger.warning(f"豆包搜图服务初始化跳过: {e}")
+
         llm_service = get_llm_service()
         knowledge_service = get_knowledge_service()
         if llm_service and llm_service.is_available():

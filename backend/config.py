@@ -130,7 +130,6 @@ class Config:
 
     # 豆包 Web 搜索配置（FeedCoop Global Search，文本搜索）
     DOUBAO_WEB_SEARCH_API_KEY = os.getenv('DOUBAO_WEB_SEARCH_API_KEY', '')
-    DOUBAO_WEB_SEARCH_API_BASE = os.getenv('DOUBAO_WEB_SEARCH_API_BASE', 'https://open.feedcoopapi.com')
     DOUBAO_WEB_SEARCH_TIMEOUT = int(os.getenv('DOUBAO_WEB_SEARCH_TIMEOUT', '30'))
     DOUBAO_WEB_SEARCH_MAX_RESULTS = int(os.getenv('DOUBAO_WEB_SEARCH_MAX_RESULTS', '10'))
     DOUBAO_WEB_SEARCH_MAX_SNIPPET_LENGTH = int(os.getenv('DOUBAO_WEB_SEARCH_MAX_SNIPPET_LENGTH', '500'))

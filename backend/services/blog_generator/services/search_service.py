@@ -248,7 +248,7 @@ def _create_provider(provider: str, config: Dict[str, Any]) -> Optional[GeneralS
         if api_key:
             return DoubaoSearchService(
                 api_key=api_key,
-                api_base=os.environ.get('DOUBAO_WEB_SEARCH_API_BASE', ''),
+                api_base= DoubaoSearchService.BASE_URL,
                 timeout=int(os.environ.get('DOUBAO_WEB_SEARCH_TIMEOUT', '30')),
                 max_results=int(os.environ.get('DOUBAO_WEB_SEARCH_MAX_RESULTS', '10')),
             )

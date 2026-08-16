@@ -588,8 +588,8 @@ class ArtistAgent:
             图片 URL，失败返回 None
         """
         try:
-            from ..services.doubao_search_service import get_doubao_search_service
-            service = get_doubao_search_service()
+            from ..services.doubao_search_service import get_doubao_image_search_service
+            service = get_doubao_image_search_service()
             if not service or not service.is_available():
                 logger.warning("豆包搜图服务不可用，跳过搜索配图")
                 return None
@@ -1232,8 +1232,8 @@ class ArtistAgent:
             try:
                 if image_source == 'search':
                     # 搜索配图：使用豆包搜图
-                    from ..services.doubao_search_service import get_doubao_search_service
-                    search_service = get_doubao_search_service()
+                    from ..services.doubao_search_service import get_doubao_image_search_service
+                    search_service = get_doubao_image_search_service()
                     if not search_service or not search_service.is_available():
                         logger.warning("[Mini 模式] 豆包搜图服务不可用，跳过搜索配图")
                         return {'success': False, 'idx': idx}
