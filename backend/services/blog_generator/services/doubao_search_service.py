@@ -11,7 +11,6 @@ API 文档: https://open.feedcoopapi.com/search_api/global_search
   DOUBAO_WEB_SEARCH_MAX_RESULTS       - 返回结果条数，默认 10，最大 20（对应 DocCount）
   DOUBAO_WEB_SEARCH_MAX_SNIPPET_LENGTH - 摘要最大 tokens，默认 500，最大 3000
   DOUBAO_IMAGE_SEARCH_API_KEY         - 豆包搜图 API Key（可选，默认复用 DOUBAO_WEB_SEARCH_API_KEY）
-  DOUBAO_IMAGE_SEARCH_API_BASE        - 豆包搜图 API 地址（可选，默认复用 DOUBAO_WEB_SEARCH_API_BASE）
   DOUBAO_IMAGE_SEARCH_TIMEOUT         - 豆包搜图超时秒数（默认 30）
   DOUBAO_IMAGE_SEARCH_MAX_RESULTS     - 豆包搜图返回条数，默认 1，最大 20
 """
@@ -110,7 +109,7 @@ class DoubaoSearchService(GeneralSearchBase):
             }
         """
         api_key = os.environ.get("DOUBAO_IMAGE_SEARCH_API_KEY", "") or self.api_key
-        api_base = (os.environ.get("DOUBAO_IMAGE_SEARCH_API_BASE", "") or self.api_base).rstrip("/")
+        api_base = self.api_base  # 豆包搜图默认复用 DOUBAO_WEB_SEARCH_API_BASE
         timeout = int(os.environ.get("DOUBAO_IMAGE_SEARCH_TIMEOUT", str(self.timeout)))
 
         if not api_key:
