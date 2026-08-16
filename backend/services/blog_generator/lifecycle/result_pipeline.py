@@ -25,6 +25,7 @@ class GenerationResultRequest:
     final_state: Dict[str, Any]
     article_config: Dict[str, Any]
     generate_images: bool
+    image_source: str  # ai / search / none
     generate_cover_video: bool
     video_aspect_ratio: str
     task_manager: Any = None
@@ -102,6 +103,10 @@ class GenerationResultPipeline:
     def _generate_cover(self, request, outline, markdown_content):
         if not request.generate_images:
             logger.info("图片生成已禁用，跳过封面图")
+            return None
+        # image_source=none 时也跳过封面图
+        if request.image_source == "none":
+            logger.info("配图方式为 'none'，跳过封面图")
             return None
         from services.media.image_styles import get_style_manager
 

@@ -244,13 +244,13 @@ def _create_provider(provider: str, config: Dict[str, Any]) -> Optional[GeneralS
 
     elif provider == 'doubao':
         from .doubao_search_service import DoubaoSearchService
-        api_key = os.environ.get('DOUBAO_API_KEY', '')
+        api_key = os.environ.get('DOUBAO_WEB_SEARCH_API_KEY', '')
         if api_key:
             return DoubaoSearchService(
                 api_key=api_key,
-                api_base=os.environ.get('DOUBAO_API_BASE', ''),
-                timeout=int(os.environ.get('DOUBAO_TIMEOUT', '30')),
-                max_results=int(os.environ.get('DOUBAO_MAX_RESULTS', '10')),
+                api_base=os.environ.get('DOUBAO_WEB_SEARCH_API_BASE', ''),
+                timeout=int(os.environ.get('DOUBAO_WEB_SEARCH_TIMEOUT', '30')),
+                max_results=int(os.environ.get('DOUBAO_WEB_SEARCH_MAX_RESULTS', '10')),
             )
         return None
 

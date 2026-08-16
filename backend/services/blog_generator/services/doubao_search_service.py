@@ -5,11 +5,15 @@ API 文档: https://open.feedcoopapi.com/search_api/global_search
 使用 POST JSON 直调搜索接口，返回结构化搜索结果。
 
 配置环境变量:
-  DOUBAO_API_KEY           - 豆包搜索 API Key（必填）
-  DOUBAO_API_BASE          - API 地址（默认 https://open.feedcoopapi.com）
-  DOUBAO_TIMEOUT           - 超时秒数（默认 30）
-  DOUBAO_MAX_RESULTS       - 返回结果条数，默认 10，最大 20（对应 DocCount）
-  DOUBAO_MAX_SNIPPET_LENGTH - 摘要最大 tokens，默认 500，最大 3000
+  DOUBAO_WEB_SEARCH_API_KEY           - 豆包搜索 API Key（必填）
+  DOUBAO_WEB_SEARCH_API_BASE          - API 地址（默认 https://open.feedcoopapi.com）
+  DOUBAO_WEB_SEARCH_TIMEOUT           - 超时秒数（默认 30）
+  DOUBAO_WEB_SEARCH_MAX_RESULTS       - 返回结果条数，默认 10，最大 20（对应 DocCount）
+  DOUBAO_WEB_SEARCH_MAX_SNIPPET_LENGTH - 摘要最大 tokens，默认 500，最大 3000
+  DOUBAO_IMAGE_SEARCH_API_KEY         - 豆包搜图 API Key（可选，默认复用 DOUBAO_WEB_SEARCH_API_KEY）
+  DOUBAO_IMAGE_SEARCH_API_BASE        - 豆包搜图 API 地址（可选，默认复用 DOUBAO_WEB_SEARCH_API_BASE）
+  DOUBAO_IMAGE_SEARCH_TIMEOUT         - 豆包搜图超时秒数（默认 30）
+  DOUBAO_IMAGE_SEARCH_MAX_RESULTS     - 豆包搜图返回条数，默认 1，最大 20
 """
 
 import logging
@@ -34,8 +38,8 @@ class DoubaoSearchService(GeneralSearchBase):
     def __init__(self, api_key: str = "", api_base: str = "",
                  timeout: int = 30, max_results: int = 10,
                  max_snippet_length: int = 500):
-        self.api_key = api_key or os.environ.get("DOUBAO_API_KEY", "")
-        self.api_base = (api_base or os.environ.get("DOUBAO_API_BASE", self.BASE_URL)
+        self.api_key = api_key or os.environ.get("DOUBAO_WEB_SEARCH_API_KEY", "")
+        self.api_base = (api_base or os.environ.get("DOUBAO_WEB_SEARCH_API_BASE", self.BASE_URL)
                          ).rstrip("/")
         self.timeout = timeout
         self.max_results = max_results
@@ -89,6 +93,105 @@ class DoubaoSearchService(GeneralSearchBase):
                 "success": False, "results": [], "summary": "",
                 "error": f"豆包搜索失败: {str(e)}",
             }
+
+    def search_images(self, query: str, max_results: int = 1) -> Dict[str, Any]:
+        """
+        豆包搜图 — SearchType=image，返回图片 URL 列表
+
+        Args:
+            query: 搜索关键词
+            max_results: 返回图片数量，默认 1，最大 20
+
+        Returns:
+            {
+                "success": bool,
+                "images": [{"url": str, "title": str, "source_url": str, "source": str}, ...],
+                "error": Optional[str]
+            }
+        """
+        api_key = os.environ.get("DOUBAO_IMAGE_SEARCH_API_KEY", "") or self.api_key
+        api_base = (os.environ.get("DOUBAO_IMAGE_SEARCH_API_BASE", "") or self.api_base).rstrip("/")
+        timeout = int(os.environ.get("DOUBAO_IMAGE_SEARCH_TIMEOUT", str(self.timeout)))
+
+        if not api_key:
+            return {
+                "success": False, "images": [],
+                "error": "豆包搜图 API Key 未配置（可设置 DOUBAO_IMAGE_SEARCH_API_KEY 或 DOUBAO_WEB_SEARCH_API_KEY）",
+            }
+
+        try:
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "Query": query,
+                "SearchType": "image",
+                "DocCount": min(max_results, 20),
+            }
+
+            url = f"{api_base}/search_api/global_search"
+            logger.info(f"🖼️ 使用豆包搜图: {query}")
+            response = requests.post(
+                url, json=payload, headers=headers, timeout=timeout,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            images = self._parse_image_results(data)
+
+            logger.info(f"豆包搜图完成: {len(images)} 张图片")
+            return {
+                "success": True,
+                "images": images,
+                "error": None,
+            }
+
+        except Exception as e:
+            logger.error(f"豆包搜图失败: {e}")
+            return {
+                "success": False, "images": [],
+                "error": f"豆包搜图失败: {str(e)}",
+            }
+
+    def _parse_image_results(self, data: Dict) -> List[Dict[str, str]]:
+        """解析 FeedCoop Global Search image 响应为图片列表"""
+        images = []
+
+        # 检查接口层错误
+        metadata = data.get("ResponseMetadata", {})
+        if metadata.get("Error"):
+            logger.warning(f"豆包搜图接口错误: {metadata['Error']}")
+            return images
+
+        result = data.get("Result")
+        if not result:
+            return images
+
+        if result.get("ErrorCode", 0) != 0:
+            logger.warning(f"豆包搜图业务错误 [{result.get('ErrorCode')}]: {result.get('ErrorMsg')}")
+            return images
+
+        documents = result.get("Documents", [])
+        for doc in documents:
+            title = doc.get("Title", "")
+            url = doc.get("Url", "")
+            host_info = doc.get("HostInfo", {})
+            source = host_info.get("Hostname", "")
+
+            # 提取图片 URL
+            doc_images = doc.get("Images", [])
+            for img in doc_images:
+                img_url = img.get("Url", "") if isinstance(img, dict) else img
+                if img_url:
+                    images.append({
+                        "url": img_url,
+                        "title": title,
+                        "source_url": url,
+                        "source": source,
+                    })
+
+        return images
 
     def _parse_results(self, data: Dict) -> List[Dict[str, Any]]:
         """解析 FeedCoop Global Search 响应为统一格式"""
@@ -144,18 +247,18 @@ class DoubaoSearchService(GeneralSearchBase):
 def init_doubao_search_service(config: Dict[str, Any] = None) -> Optional[DoubaoSearchService]:
     """初始化豆包搜索服务"""
     global _global_doubao_service
-    api_key = os.environ.get("DOUBAO_API_KEY", "")
+    api_key = os.environ.get("DOUBAO_WEB_SEARCH_API_KEY", "")
     if not api_key:
-        logger.info("豆包搜索: DOUBAO_API_KEY 未配置，跳过")
+        logger.info("豆包搜索: DOUBAO_WEB_SEARCH_API_KEY 未配置，跳过")
         _global_doubao_service = None
         return None
 
     _global_doubao_service = DoubaoSearchService(
         api_key=api_key,
-        api_base=os.environ.get("DOUBAO_API_BASE", DoubaoSearchService.BASE_URL),
-        timeout=int(os.environ.get("DOUBAO_TIMEOUT", "30")),
-        max_results=int(os.environ.get("DOUBAO_MAX_RESULTS", "10")),
-        max_snippet_length=int(os.environ.get("DOUBAO_MAX_SNIPPET_LENGTH", "500")),
+        api_base=os.environ.get("DOUBAO_WEB_SEARCH_API_BASE", DoubaoSearchService.BASE_URL),
+        timeout=int(os.environ.get("DOUBAO_WEB_SEARCH_TIMEOUT", "30")),
+        max_results=int(os.environ.get("DOUBAO_WEB_SEARCH_MAX_RESULTS", "10")),
+        max_snippet_length=int(os.environ.get("DOUBAO_WEB_SEARCH_MAX_SNIPPET_LENGTH", "500")),
     )
     logger.info("豆包搜索服务已初始化")
     return _global_doubao_service

@@ -128,12 +128,18 @@ class Config:
     ANYSEARCH_TIMEOUT = int(os.getenv('ANYSEARCH_TIMEOUT', '30'))
     ANYSEARCH_MAX_RESULTS = int(os.getenv('ANYSEARCH_MAX_RESULTS', '10'))
 
-    # 豆包（FeedCoop Global Search）搜索配置
-    DOUBAO_API_KEY = os.getenv('DOUBAO_API_KEY', '')
-    DOUBAO_API_BASE = os.getenv('DOUBAO_API_BASE', 'https://open.feedcoopapi.com')
-    DOUBAO_TIMEOUT = int(os.getenv('DOUBAO_TIMEOUT', '30'))
-    DOUBAO_MAX_RESULTS = int(os.getenv('DOUBAO_MAX_RESULTS', '10'))
-    DOUBAO_MAX_SNIPPET_LENGTH = int(os.getenv('DOUBAO_MAX_SNIPPET_LENGTH', '500'))
+    # 豆包 Web 搜索配置（FeedCoop Global Search，文本搜索）
+    DOUBAO_WEB_SEARCH_API_KEY = os.getenv('DOUBAO_WEB_SEARCH_API_KEY', '')
+    DOUBAO_WEB_SEARCH_API_BASE = os.getenv('DOUBAO_WEB_SEARCH_API_BASE', 'https://open.feedcoopapi.com')
+    DOUBAO_WEB_SEARCH_TIMEOUT = int(os.getenv('DOUBAO_WEB_SEARCH_TIMEOUT', '30'))
+    DOUBAO_WEB_SEARCH_MAX_RESULTS = int(os.getenv('DOUBAO_WEB_SEARCH_MAX_RESULTS', '10'))
+    DOUBAO_WEB_SEARCH_MAX_SNIPPET_LENGTH = int(os.getenv('DOUBAO_WEB_SEARCH_MAX_SNIPPET_LENGTH', '500'))
+
+    # 豆包图片搜索配置（独立于文本搜索，可复用 DOUBAO_WEB_SEARCH_API_KEY）
+    DOUBAO_IMAGE_SEARCH_API_KEY = os.getenv('DOUBAO_IMAGE_SEARCH_API_KEY', '')  # 为空则复用 DOUBAO_WEB_SEARCH_API_KEY
+    DOUBAO_IMAGE_SEARCH_API_BASE = os.getenv('DOUBAO_IMAGE_SEARCH_API_BASE', '')  # 为空则复用 DOUBAO_WEB_SEARCH_API_BASE
+    DOUBAO_IMAGE_SEARCH_TIMEOUT = int(os.getenv('DOUBAO_IMAGE_SEARCH_TIMEOUT', '30'))
+    DOUBAO_IMAGE_SEARCH_MAX_RESULTS = int(os.getenv('DOUBAO_IMAGE_SEARCH_MAX_RESULTS', '1'))  # 默认 1，后期可改
 
     # Serper Google 搜索配置（75.02）
     SERPER_API_KEY = os.getenv('SERPER_API_KEY', '')
