@@ -346,13 +346,13 @@ class LLMService:
             if content is None:
                 logger.warning(
                     f"[_convert_messages] 第 {i} 条消息 content 为 None (role={role})，"
-                    f"已替换为空字符串。原始消息: {str(msg)[:500]}"
+                    f"已替换为空字符串。原始消息: {str(msg)}"
                 )
                 content = ""
             elif not isinstance(content, str):
                 logger.warning(
                     f"[_convert_messages] 第 {i} 条消息 content 类型异常: {type(content).__name__} (role={role})，"
-                    f"可能引发 langchain 消息校验失败。原始消息: {str(msg)[:800]}"
+                    f"可能引发 langchain 消息校验失败。原始消息: {str(msg)}"
                 )
             if role == "system":
                 langchain_messages.append(SystemMessage(content=content))
@@ -559,6 +559,10 @@ class LLMService:
             logger.error("模型不可用")
             return None
 
+        # 是否已检测到 reasoning-only 模型（如 sensenova-* flash-lite），
+        # 其流式响应只有 delta.reasoning 无 delta.role，langchain 解析会报 ChatMessage.role 校验错误。
+        _reasoning_model_detected = False
+
         try:
             if response_format and response_format.get("type") == "json_object":
                 if self.provider_format == 'anthropic':
@@ -626,6 +630,26 @@ class LLMService:
                     if is_context_length_error(stream_err):
                         raise ContextLengthExceeded(str(stream_err)) from stream_err
 
+                    # == reasoning-only 模型兼容 ==
+                    # 检测特征：流式 chunk 只有 delta.reasoning 无 delta.role →
+                    # ChatMessage.role Input should be a valid string (input_value=None)
+                    if not _reasoning_model_detected and (
+                        'validation error for ChatMessage' in str(stream_err)
+                        and 'input_value=None' in str(stream_err)
+                    ):
+                        _reasoning_model_detected = True
+                        logger.warning(
+                            f"{label}检测到 reasoning-only 模型响应 (流式无 delta.role)，"
+                            f"自动解除 response_format 绑定，改用 prompt 约束 JSON 输出"
+                        )
+                        # 重新获取原始模型（非 bind 版），用 prompt 约束代替 response_format
+                        model, _, _ = self._get_tier_info(tier)
+                        if attempt < DEFAULT_MAX_RETRIES - 1:
+                            wait = min(DEFAULT_BASE_WAIT * (2 ** attempt), DEFAULT_MAX_WAIT)
+                            logger.warning(f"{label}解除 bind 后立即重试 (attempt {attempts}/{DEFAULT_MAX_RETRIES})")
+                            time.sleep(wait)
+                            continue
+
                     # pydantic 消息校验失败（如 role/content 类型错误）：输出详细上下文便于定位
                     if 'validation error' in str(stream_err).lower() or 'input should be' in str(stream_err).lower():
                         logger.error(
@@ -635,7 +659,7 @@ class LLMService:
                             f"── 消息内容:\n" + "\n".join(
                                 f"   [{i}] role={m.get('role', 'user')!r}, "
                                 f"content类型={type(m.get('content')).__name__}, "
-                                f"content前200字={str(m.get('content'))[:200]!r}"
+                                f"content={str(m.get('content'))!r}"
                                 for i, m in enumerate(messages)
                             )
                         )
@@ -657,6 +681,23 @@ class LLMService:
             logger.error(f"流式调用上下文超限: {e}")
             return None
         except Exception as e:
+            # == 方案 C: 流式全部失败后降级为非流式 ==
+            # 适用于 reasoning-only 模型（商汤 sensenova-* flash-lite 等），
+            # 流式 chunk 不兼容 langchain 解析，但非流式接口正常返回。
+            if _reasoning_model_detected:
+                logger.warning(
+                    f"{label}流式调用全部失败，降级为非流式 chat() (模型: {model_name})"
+                )
+                try:
+                    return self.chat(
+                        messages=messages,
+                        temperature=temperature,
+                        response_format=response_format,
+                        caller=caller,
+                        tier=tier,
+                    )
+                except Exception as fallback_err:
+                    logger.error(f"{label}非流式降级也失败: {fallback_err}")
             logger.error(f"LLM 流式调用失败: {e}")
             return None
 
