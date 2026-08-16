@@ -114,6 +114,27 @@ class Config:
     TOOL_BLACKLIST = os.getenv('TOOL_BLACKLIST', '')
     TOOL_DEFAULT_TIMEOUT = int(os.getenv('TOOL_DEFAULT_TIMEOUT', '300'))
 
+    # 通用搜索提供商配置（平替智谱）
+    GENERAL_SEARCH_PROVIDER = os.getenv('GENERAL_SEARCH_PROVIDER', 'zhipu')
+
+    # Tavily 搜索配置
+    TAVILY_API_KEY = os.getenv('TAVILY_API_KEY', '')
+    TAVILY_TIMEOUT = int(os.getenv('TAVILY_TIMEOUT', '30'))
+    TAVILY_MAX_RESULTS = int(os.getenv('TAVILY_MAX_RESULTS', '10'))
+
+    # AnySearch 搜索配置
+    ANYSEARCH_API_KEY = os.getenv('ANYSEARCH_API_KEY', '')
+    ANYSEARCH_API_BASE = os.getenv('ANYSEARCH_API_BASE', 'https://api.anysearch.com/v1/search')
+    ANYSEARCH_TIMEOUT = int(os.getenv('ANYSEARCH_TIMEOUT', '30'))
+    ANYSEARCH_MAX_RESULTS = int(os.getenv('ANYSEARCH_MAX_RESULTS', '10'))
+
+    # 豆包（FeedCoop Global Search）搜索配置
+    DOUBAO_API_KEY = os.getenv('DOUBAO_API_KEY', '')
+    DOUBAO_API_BASE = os.getenv('DOUBAO_API_BASE', 'https://open.feedcoopapi.com')
+    DOUBAO_TIMEOUT = int(os.getenv('DOUBAO_TIMEOUT', '30'))
+    DOUBAO_MAX_RESULTS = int(os.getenv('DOUBAO_MAX_RESULTS', '10'))
+    DOUBAO_MAX_SNIPPET_LENGTH = int(os.getenv('DOUBAO_MAX_SNIPPET_LENGTH', '500'))
+
     # Serper Google 搜索配置（75.02）
     SERPER_API_KEY = os.getenv('SERPER_API_KEY', '')
     SERPER_TIMEOUT = int(os.getenv('SERPER_TIMEOUT', '10'))

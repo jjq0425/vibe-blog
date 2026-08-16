@@ -338,9 +338,22 @@ class LLMService:
         """将 dict 格式消息转换为 LangChain 消息对象"""
         from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
         langchain_messages = []
-        for msg in messages:
+        for i, msg in enumerate(messages):
             role = msg.get("role", "user")
             content = msg.get("content", "")
+            # 防御性校验：content 必须是字符串或 LangChain 支持的 content block 列表，
+            # None/dict/其他类型会导致 langchain pydantic 校验失败（role/Input should be a valid string）
+            if content is None:
+                logger.warning(
+                    f"[_convert_messages] 第 {i} 条消息 content 为 None (role={role})，"
+                    f"已替换为空字符串。原始消息: {str(msg)[:500]}"
+                )
+                content = ""
+            elif not isinstance(content, str):
+                logger.warning(
+                    f"[_convert_messages] 第 {i} 条消息 content 类型异常: {type(content).__name__} (role={role})，"
+                    f"可能引发 langchain 消息校验失败。原始消息: {str(msg)[:800]}"
+                )
             if role == "system":
                 langchain_messages.append(SystemMessage(content=content))
             elif role == "assistant":
@@ -612,6 +625,20 @@ class LLMService:
                 except Exception as stream_err:
                     if is_context_length_error(stream_err):
                         raise ContextLengthExceeded(str(stream_err)) from stream_err
+
+                    # pydantic 消息校验失败（如 role/content 类型错误）：输出详细上下文便于定位
+                    if 'validation error' in str(stream_err).lower() or 'input should be' in str(stream_err).lower():
+                        logger.error(
+                            f"{label}消息格式校验失败: {stream_err}\n"
+                            f"── 调用方: {caller or 'unknown'}, 模型: {model_name}\n"
+                            f"── 消息数量: {len(messages)}\n"
+                            f"── 消息内容:\n" + "\n".join(
+                                f"   [{i}] role={m.get('role', 'user')!r}, "
+                                f"content类型={type(m.get('content')).__name__}, "
+                                f"content前200字={str(m.get('content'))[:200]!r}"
+                                for i, m in enumerate(messages)
+                            )
+                        )
 
                     if '429' in str(stream_err) and attempt < DEFAULT_MAX_RETRIES - 1:
                         wait = min(DEFAULT_BASE_WAIT * (2 ** attempt), DEFAULT_MAX_WAIT)

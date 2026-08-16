@@ -58,10 +58,11 @@ def init_blog_services(app_config):
     try:
         init_search_service(app_config)
         search_service = get_search_service()
+        provider = os.environ.get('GENERAL_SEARCH_PROVIDER', 'zhipu')
         if search_service and search_service.is_available():
-            logger.info("智谱搜索服务已初始化")
+            logger.info(f"通用搜索服务已初始化 (提供商: {provider})")
         else:
-            logger.warning("智谱搜索服务不可用，Researcher Agent 将跳过联网搜索")
+            logger.warning(f"通用搜索服务不可用 (提供商: {provider})，Researcher Agent 将跳过联网搜索")
 
         # 75.02 Serper Google 搜索
         try:
