@@ -852,6 +852,7 @@ class BlogService:
         target_length = task_info.get('target_length', 'medium')
         interactive = task_info.get('interactive', False)
         generate_images = task_info.get('generate_images', True)
+        image_source = task_info.get('image_source', 'ai')
         generate_cover_video = task_info.get('generate_cover_video', False)
         video_aspect_ratio = task_info.get('video_aspect_ratio', '16:9')
 
