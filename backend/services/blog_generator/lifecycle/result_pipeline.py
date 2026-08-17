@@ -26,7 +26,7 @@ class GenerationResultRequest:
     article_config: Dict[str, Any]
     generate_images: bool
     image_source: str = "ai"  # ai / search / none
-    generate_cover_video: bool
+    generate_cover_video: bool = False
     video_aspect_ratio: str
     task_manager: Any = None
     token_tracker: Any = None
