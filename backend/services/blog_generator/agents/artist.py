@@ -656,18 +656,8 @@ class ArtistAgent:
             logger.error(f"搜索配图异常: {e}")
             return None
             
-            if result and (result.oss_url or result.local_path):
-                # 优先返回 OSS URL
-                final_path = result.oss_url or result.local_path
-                logger.info(f"AI 图片生成成功: {final_path}")
-                return final_path
-            else:
-                logger.warning(f"AI 图片生成失败: {caption}")
-                return None
                 
-        except Exception as e:
-            logger.error(f"AI 图片生成异常: {e}")
-            return None
+        
     
     def extract_image_placeholders(self, content: str) -> List[Dict[str, str]]:
         """

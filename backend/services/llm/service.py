@@ -349,7 +349,7 @@ class LLMService:
                     f"已替换为空字符串。原始消息: {str(msg)}"
                 )
                 content = ""
-            elif not isinstance(content, str):
+            elif not isinstance(content, (str, list)):
                 logger.warning(
                     f"[_convert_messages] 第 {i} 条消息 content 类型异常: {type(content).__name__} (role={role})，"
                     f"可能引发 langchain 消息校验失败。原始消息: {str(msg)}"

@@ -216,7 +216,7 @@ The checked-in [`backend/.env.example`](backend/.env.example) is the source of t
 | Group | Representative variables | Required? |
 | --- | --- | --- |
 | Text model | `AI_PROVIDER_FORMAT`, `OPENAI_API_KEY`, `OPENAI_API_BASE`, `TEXT_MODEL` | Yes, for the OpenAI-compatible path |
-| Research | `ZAI_SEARCH_API_KEY`, `SERPER_API_KEY`, `JINA_API_KEY`, `ANYSEARCH_API_KEY`, `DOUBAO_WEB_SEARCH_API_KEY`,`DOUBAO_WEB_SEARCH_API_KEY`, `DOUBAO_IMAGE_SEARCH_API_KEY` | Optional |
+| Research | `ZAI_SEARCH_API_KEY`, `SERPER_API_KEY`, `JINA_API_KEY`, `TAVILY_API_KEY`, `ANYSEARCH_API_KEY`, `DOUBAO_WEB_SEARCH_API_KEY`, `DOUBAO_IMAGE_SEARCH_API_KEY` | Optional |
 | Documents | `MINERU_TOKEN`, local material settings | Optional |
 | Media | `NANO_BANANA_API_KEY`, OSS and video settings, `DOUBAO_IMAGE_SEARCH_API_KEY` for search-based illustrations | Optional |
 | Tracing | `TRACE_ENABLED`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` | Optional |

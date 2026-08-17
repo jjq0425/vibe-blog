@@ -178,8 +178,11 @@ class DoubaoImageSearchService:
     BASE_URL = "https://open.feedcoopapi.com"
 
     def __init__(self, api_key: str = "", api_base: str = "", timeout: int = 30):
-        self.api_key = api_key or os.environ.get("DOUBAO_IMAGE_SEARCH_API_KEY", "")
-        self.api_base = (api_base or os.environ.get("DOUBAO_IMAGE_SEARCH_API_BASE", self.BASE_URL)).rstrip("/")
+        self.api_key = (
+             api_key
+             or os.environ.get("DOUBAO_IMAGE_SEARCH_API_KEY", "")
+        ) 
+        self.api_base = (api_base or self.BASE_URL).rstrip("/")
         self.timeout = int(os.environ.get("DOUBAO_IMAGE_SEARCH_TIMEOUT", str(timeout)))
 
     def is_available(self) -> bool:
@@ -296,7 +299,7 @@ def init_doubao_image_search_service(config: Dict[str, Any] = None) -> Optional[
 
     _global_doubao_image_service = DoubaoImageSearchService(
         api_key=api_key,
-        api_base=os.environ.get("DOUBAO_IMAGE_SEARCH_API_BASE", DoubaoImageSearchService.BASE_URL),
+        api_base=DoubaoImageSearchService.BASE_URL,
         timeout=int(os.environ.get("DOUBAO_IMAGE_SEARCH_TIMEOUT", "30")),
     )
     logger.info("豆包搜图服务已初始化")
